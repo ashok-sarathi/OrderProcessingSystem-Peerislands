@@ -1,11 +1,13 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
 namespace OrderProcessingSystem.Application.Dtos.Orders
 {
+    [ExcludeFromCodeCoverage]
     public record OrderDetailsItemDto
     {
         public Guid ItemId { get; set; }

@@ -1,8 +1,10 @@
 ﻿using OrderProcessingSystem.Data.Contexts;
 using OrderProcessingSystem.Data.Entities;
+using System.Diagnostics.CodeAnalysis;
 
 namespace OrderProcessingSystem.Api.Helper.Extentions
 {
+    [ExcludeFromCodeCoverage]
     public static class ApplicationExtentions
     {
         public static void SeedData(this IApplicationBuilder app)

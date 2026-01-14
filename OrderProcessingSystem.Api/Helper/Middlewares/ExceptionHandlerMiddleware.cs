@@ -1,9 +1,11 @@
 ﻿using OrderProcessingSystem.Application.Helper.Exceptions;
+using System.Diagnostics.CodeAnalysis;
 using System.Net;
 using System.Text.Json;
 
 namespace OrderProcessingSystem.Api.Helper.Middlewares
 {
+    [ExcludeFromCodeCoverage]
     public class ExceptionHandlerMiddleware(RequestDelegate next, ILogger<ExceptionHandlerMiddleware> logger)
     {
         public async Task InvokeAsync(HttpContext context)

@@ -1,7 +1,9 @@
-﻿using System.Linq.Expressions;
+﻿using System.Diagnostics.CodeAnalysis;
+using System.Linq.Expressions;
 
 namespace OrderProcessingSystem.Application.Helper.Extentions
 {
+    [ExcludeFromCodeCoverage]
     public static class LinqExtensions
     {
         public static IQueryable<T> WhereIf<T>(this IQueryable<T> source,

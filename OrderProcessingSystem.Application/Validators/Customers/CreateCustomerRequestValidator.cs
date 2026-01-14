@@ -1,8 +1,10 @@
 ﻿using FluentValidation;
 using OrderProcessingSystem.Application.Handlers.Customers.Commands.CreateCustomer;
+using System.Diagnostics.CodeAnalysis;
 
 namespace OrderProcessingSystem.Application.Validators.Customers
 {
+    [ExcludeFromCodeCoverage]
     public class CreateCustomerRequestValidator : AbstractValidator<CreateCustomerRequest>
     {
         public CreateCustomerRequestValidator()

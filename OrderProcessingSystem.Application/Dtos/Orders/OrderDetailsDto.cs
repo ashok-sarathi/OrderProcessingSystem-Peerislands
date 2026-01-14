@@ -1,5 +1,8 @@
-﻿namespace OrderProcessingSystem.Application.Dtos.Orders
+﻿using System.Diagnostics.CodeAnalysis;
+
+namespace OrderProcessingSystem.Application.Dtos.Orders
 {
+    [ExcludeFromCodeCoverage]
     public record OrderDetailsDto
     {
         public Guid OrderId { get; set; }

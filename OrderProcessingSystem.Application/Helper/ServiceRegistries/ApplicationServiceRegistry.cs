@@ -4,9 +4,11 @@ using OrderProcessingSystem.Application.Handlers.Orders.Commands.UpdateOrderStat
 using OrderProcessingSystem.Application.Rules.OrderRules;
 using OrderProcessingSystem.Application.Rules.OrderRules.IRules;
 using OrderProcessingSystem.Application.Validators.Customers;
+using System.Diagnostics.CodeAnalysis;
 
 namespace OrderProcessingSystem.Application.Helper.ServiceRegistries
 {
+    [ExcludeFromCodeCoverage]
     public static class ApplicationServiceRegistry
     {
         public static void RegisterApplicationServices(this IServiceCollection services)

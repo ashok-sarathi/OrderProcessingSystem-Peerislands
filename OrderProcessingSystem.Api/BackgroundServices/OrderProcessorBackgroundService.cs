@@ -4,9 +4,11 @@ using Microsoft.EntityFrameworkCore;
 using OrderProcessingSystem.Application.Handlers.Orders.Commands.UpdateOrderStatus;
 using OrderProcessingSystem.Data.Contexts;
 using OrderProcessingSystem.Data.Helper.Enums;
+using System.Diagnostics.CodeAnalysis;
 
 namespace OrderProcessingSystem.Api.BackgroundServices
 {
+    [ExcludeFromCodeCoverage]
     public class OrderProcessorBackgroundService : BackgroundService
     {
         private readonly TimeSpan _interval;

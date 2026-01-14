@@ -1,7 +1,9 @@
 ﻿using OrderProcessingSystem.Data.Helper;
+using System.Diagnostics.CodeAnalysis;
 
 namespace OrderProcessingSystem.Data.Entities
 {
+    [ExcludeFromCodeCoverage]
     public class OrderItem : CommonEntity
     {
         public Guid OrderId { get; set; }

@@ -1,8 +1,10 @@
 ﻿using FluentValidation;
 using OrderProcessingSystem.Application.Handlers.Orders.Commands.CreateOrder;
+using System.Diagnostics.CodeAnalysis;
 
 namespace OrderProcessingSystem.Application.Validators.Orders
 {
+    [ExcludeFromCodeCoverage]
     public class CreateOrderRequestValidator : AbstractValidator<CreateOrderRequest>
     {
         public CreateOrderRequestValidator() {

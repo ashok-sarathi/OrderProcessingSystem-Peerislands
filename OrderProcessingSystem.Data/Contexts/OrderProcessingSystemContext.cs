@@ -1,8 +1,10 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using OrderProcessingSystem.Data.Entities;
+using System.Diagnostics.CodeAnalysis;
 
 namespace OrderProcessingSystem.Data.Contexts
 {
+    [ExcludeFromCodeCoverage]
     public class OrderProcessingSystemContext(DbContextOptions<OrderProcessingSystemContext> options)
         : DbContext(options)
     {

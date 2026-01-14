@@ -1,9 +1,11 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 using OrderProcessingSystem.Data.Entities;
+using System.Diagnostics.CodeAnalysis;
 
 namespace OrderProcessingSystem.Data.EntityMappings
 {
+    [ExcludeFromCodeCoverage]
     public class OrderMapping : IEntityTypeConfiguration<Order>
     {
         public void Configure(EntityTypeBuilder<Order> builder)

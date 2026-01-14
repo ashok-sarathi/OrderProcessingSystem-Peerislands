@@ -1,8 +1,10 @@
 ﻿using OrderProcessingSystem.Data.Helper;
 using OrderProcessingSystem.Data.Helper.Enums;
+using System.Diagnostics.CodeAnalysis;
 
 namespace OrderProcessingSystem.Data.Entities
 {
+    [ExcludeFromCodeCoverage]
     public class Order : CommonEntity
     {
         public OrderStatus OrderStatus { get; set; }
