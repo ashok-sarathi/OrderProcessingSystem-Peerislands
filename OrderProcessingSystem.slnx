@@ -1,0 +1,8 @@
+<Solution>
+  <Folder Name="/OrderProcessingSystems.Tests/" />
+  <Folder Name="/OrderProcessingSystems/">
+    <Project Path="OrderProcessingSystem.Api/OrderProcessingSystem.Api.csproj" />
+    <Project Path="OrderProcessingSystem.Application/OrderProcessingSystem.Application.csproj" />
+    <Project Path="OrderProcessingSystem.Data/OrderProcessingSystem.Data.csproj" />
+  </Folder>
+</Solution>
