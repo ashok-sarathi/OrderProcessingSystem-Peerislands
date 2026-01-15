@@ -9,7 +9,7 @@ The system manages orders through a complete **order lifecycle** and demonstrate
 
 * Create, read, and update orders via API endpoints
 * Orders automatically progress through states:
-  `Pending → Processing → Shipped → Delivered ✖ Cancled`
+  `Pending → Processing → Shipped → Delivered ✖ Canceled`
 * **Input validation** using FluentValidation
 * **InMemory EF Core** database for quick prototyping/testing
 * **CQRS-style architecture** using MediatR and Business logic rules
