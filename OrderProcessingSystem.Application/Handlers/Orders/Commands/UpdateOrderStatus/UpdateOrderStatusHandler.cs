@@ -1,7 +1,8 @@
 ﻿using MediatR;
 using Microsoft.Extensions.DependencyInjection;
-using OrderProcessingSystem.Application.Rules.OrderRules.IRules;
-using OrderProcessingSystem.Application.Rules.OrderRules.IRules.Common;
+using OrderProcessingSystem.Application.Rules.Common;
+using OrderProcessingSystem.Application.Rules.OrderRules.IOrderRules;
+using OrderProcessingSystem.Application.Rules.OrderRules.IOrderRules;
 using OrderProcessingSystem.Data.Helper.Enums;
 
 namespace OrderProcessingSystem.Application.Handlers.Orders.Commands.UpdateOrderStatus

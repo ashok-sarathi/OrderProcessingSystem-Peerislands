@@ -4,7 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace OrderProcessingSystem.Application.Rules.OrderRules.IRules.Common
+namespace OrderProcessingSystem.Application.Rules.Common
 {
     public interface ICommonVoidRule<T>
     {

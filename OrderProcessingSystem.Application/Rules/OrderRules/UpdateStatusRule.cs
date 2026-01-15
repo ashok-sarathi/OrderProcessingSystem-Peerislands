@@ -1,6 +1,6 @@
 ﻿using OrderProcessingSystem.Application.Handlers.Orders.Commands.UpdateOrderStatus;
 using OrderProcessingSystem.Application.Helper.Exceptions;
-using OrderProcessingSystem.Application.Rules.OrderRules.IRules;
+using OrderProcessingSystem.Application.Rules.OrderRules.IOrderRules;
 using OrderProcessingSystem.Data.Contexts;
 
 namespace OrderProcessingSystem.Application.Rules.OrderRules
