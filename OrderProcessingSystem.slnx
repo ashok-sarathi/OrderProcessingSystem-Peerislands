@@ -1,5 +1,8 @@
 <Solution>
-  <Folder Name="/OrderProcessingSystems.Tests/" />
+  <Folder Name="/OrderProcessingSystems.Tests/">
+    <Project Path="OrderProcessingSystem.Api.Tests/OrderProcessingSystem.Api.Tests.csproj" Id="f99edf78-f490-49e3-a6ec-46393fcf9cf7" />
+    <Project Path="OrderProcessingSystem.Application.Tests/OrderProcessingSystem.Application.Tests.csproj" Id="3b5fc143-db41-4c0f-ba21-be0ece2461ab" />
+  </Folder>
   <Folder Name="/OrderProcessingSystems/">
     <Project Path="OrderProcessingSystem.Api/OrderProcessingSystem.Api.csproj" />
     <Project Path="OrderProcessingSystem.Application/OrderProcessingSystem.Application.csproj" />

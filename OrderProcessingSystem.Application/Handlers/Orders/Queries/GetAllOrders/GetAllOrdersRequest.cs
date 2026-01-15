@@ -3,12 +3,14 @@ using OrderProcessingSystem.Application.Dtos.Orders;
 using OrderProcessingSystem.Data.Helper.Enums;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
 namespace OrderProcessingSystem.Application.Handlers.Orders.Queries.GetAllOrders
 {
+    [ExcludeFromCodeCoverage]
     public record GetAllOrdersRequest(
             OrderStatus? OrderStatus,
             Guid? CustomerId
