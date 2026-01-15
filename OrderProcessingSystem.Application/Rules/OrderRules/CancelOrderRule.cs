@@ -19,7 +19,7 @@ namespace OrderProcessingSystem.Application.Rules.OrderRules
                     throw new NotFoundException($"Given order id not found : {request.Id}");
 
                 if (order.OrderStatus == OrderStatus.CANCELED)
-                    throw new BadRequestException($"Given Order is alread canceled : {request.Id}");
+                    throw new BadRequestException($"Given Order is already canceled : {request.Id}");
 
                 if (order.OrderStatus != OrderStatus.PENDING)
                     throw new BadRequestException($"Only orders with status PENDING can be canceled, Given Order  current status is {order.OrderStatus.ToString()} : {request.Id}");

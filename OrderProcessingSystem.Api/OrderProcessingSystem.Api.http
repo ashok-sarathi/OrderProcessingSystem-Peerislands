@@ -34,10 +34,11 @@ Accept: */*
 # Optional Query Parameters:
 
 # orderStatus - Filter orders by their status. Possible values:
-# PENDING = 1001
+# PENDING    = 1001
 # PROCESSING = 1002
-# SHIPPED = 1003
-# DELIVERED = 1004
+# SHIPPED    = 1003
+# DELIVERED  = 1004
+# CANCELED   = 1005
 @orderStatus = 
 
 # customerId - Filter orders by a specific customer ID.
@@ -51,7 +52,7 @@ Accept: */*
 # @name GetOrderById
 # @summary Retrieves a specific order by its ID.
 
-@OrderId = f216d34b-afc1-4aeb-9549-eb374d072f61
+@OrderId = eb31322c-e700-4cf7-82c9-ab6b2fbfc957
 
 GET {{Api_HostAddress}}/api/Orders/{{OrderId}}
 Accept: */*
@@ -64,7 +65,7 @@ POST {{Api_HostAddress}}/api/Orders
 Content-Type: application/json
 
 {
-  "customerId": "10000000-0000-0000-0000-000000000000",
+  "customerId": "20000000-0000-0000-0000-000000000000",
   "items": [
     {
       "itemId": "30000000-0000-0000-0000-000000000000",
@@ -81,7 +82,7 @@ Content-Type: application/json
 
 # @name CancelOrder
 # @summary Cancels an existing order by its ID.
-@CancelOrderId = 68d2ca29-990e-4ffc-889b-c627a68d9456
+@CancelOrderId = eb31322c-e700-4cf7-82c9-ab6b2fbfc957
 PATCH {{Api_HostAddress}}/api/Orders/CancelOrder/{{CancelOrderId}}
 Accept: */*
 

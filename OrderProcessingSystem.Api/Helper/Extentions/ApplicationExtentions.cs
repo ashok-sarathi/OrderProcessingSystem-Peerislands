@@ -27,8 +27,8 @@ namespace OrderProcessingSystem.Api.Helper.Extentions
                     new Customer
                     {
                         Id = Guid.Parse("20000000-0000-0000-0000-000000000000"),
-                        Name = "Jane Smith",
-                        Email = "JaneSmith@mydomain.com",
+                        Name = "Smith Jane",
+                        Email = "SmithJane@mydomain.com",
                         Phone = "987-654-3210",
                         PermanentAddress = "456 Elm St, Hometown, Country",
                         ShippingAddress = "456 Elm St, Hometown, Country"
@@ -40,15 +40,15 @@ namespace OrderProcessingSystem.Api.Helper.Extentions
                     new Product
                     {
                         Id = Guid.Parse("30000000-0000-0000-0000-000000000000"),
-                        Name = "Sample Product 1",
-                        Description = "This is a sample product description.",
+                        Name = "Dell Inspiron Laptop",
+                        Description = "15.6-inch FHD display, Intel Core i5 processor, 8GB RAM, 512GB SSD, ideal for everyday work and entertainment.",
                         Price = 19.99m
                     },
                     new Product
                     {
                         Id = Guid.Parse("40000000-0000-0000-0000-000000000000"),
-                        Name = "Sample Product 2",
-                        Description = "This is another sample product description.",
+                        Name = "Lenovo ThinkPad Laptop",
+                        Description = "14-inch FHD display, Intel Core i7 processor, 16GB RAM, 1TB SSD, designed for business performance and durability.",
                         Price = 29.99m
                     }
                 });
