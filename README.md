@@ -1,32 +1,104 @@
-﻿# OrderProcessingSystem
+﻿# OrderProcessingSystem-Peerislands
 
-A .NET 8 order processing service that accepts, validates, persists and advances orders through lifecycle states (Pending → Processing → Shipped → Delivered). The solution is layered (Api, Application, Data), uses MediatR for request/command handling (CQRS-style), and EF Core for persistence.
+A robust **Order Processing System** built with **.NET 8**, **ASP.NET Core Web API**, **Entity Framework Core InMemory**, and **MediatR**.
+The system manages orders through a complete **order lifecycle** and demonstrates **clean architecture, CQRS pattern, background processing, and unit testing**.
 
-## Key features
-- Layered architecture: `Api`, `Application`, `Data`.
-- MediatR for commands/handlers and orchestration.
-- EF Core DbContext in `OrderProcessingSystem.Data`.
-- Background processing via a hosted service: `OrderProcessorBackgroundService` (advances order statuses).
-- Business rules implemented in `OrderProcessingSystem.Application.Rules.OrderRules` (e.g., update/cancel rules).
+---
 
-## Projects
-- `OrderProcessingSystem.Api` — HTTP API, DI, hosted/background services, configuration.
-- `OrderProcessingSystem.Application` — MediatR requests/handlers, validation, business rules and DTOs.
-- `OrderProcessingSystem.Data` — EF Core entities, DbContext, persistence.
+## 🧱 Features
 
-## Getting started
-1. Restore and build:
-   - `dotnet restore`
-   - `dotnet build`
-2. Run the API:
-   - `dotnet run --project OrderProcessingSystem.Api`
-3. Database:
-   - Use EF Core migrations and your preferred database provider. Typical commands:
-     - `dotnet ef migrations add InitialCreate --project OrderProcessingSystem.Data`
-     - `dotnet ef database update --project OrderProcessingSystem.Data`
+* Create, read, and update orders via API endpoints
+* Orders automatically progress through states:
+  `Pending → Processing → Shipped → Delivered ✖ Cancled`
+* **Input validation** using FluentValidation
+* **InMemory EF Core** database for quick prototyping/testing
+* **CQRS-style architecture** using MediatR and Business logic rules
+* Background service for processing order state transitions
+* Unit tests for API and business logic
 
-## Configuration
-Important configuration key used by the background service:
-- `OrderProcessBackgroundServiceIntervalMs` — interval in milliseconds for the `OrderProcessorBackgroundService` loop.
+---
 
-Example `appsettings.json` snippet:
+## ⚙️ Tech Stack
+
+| Layer           | Technology                       |
+| --------------- | -------------------------------- |
+| API             | ASP.NET Core Web API (.NET 8)    |
+| Business Logic  | MediatR (CQRS pattern and rules) |
+| Data Access     | Entity Framework Core (InMemory) |
+| Validation      | FluentValidation                 |
+| Testing         | xUnit + Moq                      |
+| Background Jobs | IHostedService                   |
+
+---
+
+## 🚀 Getting Started
+
+### 1. Clone the repository
+
+```bash
+git clone https://github.com/ashok-sarathi/OrderProcessingSystem-Peerislands.git
+cd OrderProcessingSystem-Peerislands
+```
+
+### 2. Build the solution
+
+```bash
+dotnet build
+```
+
+### 3. Run the API
+
+```bash
+dotnet run --project OrderProcessingSystem.Api
+```
+
+The API will be available at: `http://localhost:5000` (default Kestrel port)
+
+---
+
+## 🧪 Testing
+
+* The solution includes **unit tests** for the API and application layer.
+* Run all tests:
+
+```bash
+dotnet test
+```
+
+* Tests cover:
+
+  * Command/Query handlers
+  * Validation rules
+  * API endpoints
+
+---
+
+## 📌 Notes & Best Practices
+
+* **InMemory database is for testing/development only**
+* For production:
+
+  * Replace `UseInMemoryDatabase` with `UseSqlServer` or `UsePostgreSQL`
+  * Add migrations using EF Core
+* Background service updates orders every **configured interval** (default 5 mins)
+* Use **FluentValidation** for request validation
+
+---
+
+## 🔗 Resources
+
+* [ASP.NET Core Documentation](https://learn.microsoft.com/en-us/aspnet/core/?view=aspnetcore-8.0)
+* [Entity Framework Core InMemory Provider](https://learn.microsoft.com/en-us/ef/core/providers/in-memory/?tabs=dotnet-core-cli)
+* [MediatR Documentation](https://github.com/jbogard/MediatR)
+* [FluentValidation Documentation](https://docs.fluentvalidation.net/en/latest/)
+* [REST Client for VS Code](https://marketplace.visualstudio.com/items?itemName=humao.rest-client)
+
+---
+
+## 🤝 Contributing
+
+Feel free to:
+
+* Open issues
+* Submit pull requests
+* Suggest features
