@@ -52,7 +52,7 @@ Accept: */*
 # @name GetOrderById
 # @summary Retrieves a specific order by its ID.
 
-@OrderId = eb31322c-e700-4cf7-82c9-ab6b2fbfc957
+@OrderId = 3002d9a0-6fe5-42b8-854d-dd2f2f14b9b9
 
 GET {{Api_HostAddress}}/api/Orders/{{OrderId}}
 Accept: */*
@@ -74,6 +74,14 @@ Content-Type: application/json
     {
       "itemId": "40000000-0000-0000-0000-000000000000",
       "quantity": 20
+    },
+    {
+      "itemId": "50000000-0000-0000-0000-000000000000",
+      "quantity": 30
+    },
+    {
+      "itemId": "60000000-0000-0000-0000-000000000000",
+      "quantity": 40
     }
   ]
 }
@@ -82,7 +90,7 @@ Content-Type: application/json
 
 # @name CancelOrder
 # @summary Cancels an existing order by its ID.
-@CancelOrderId = eb31322c-e700-4cf7-82c9-ab6b2fbfc957
+@CancelOrderId = 16aebe78-97e8-44dc-abd5-c48f0b39eb77
 PATCH {{Api_HostAddress}}/api/Orders/CancelOrder/{{CancelOrderId}}
 Accept: */*
 

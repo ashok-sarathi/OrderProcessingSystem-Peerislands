@@ -1,18 +1,17 @@
 ﻿using MediatR;
 using Microsoft.EntityFrameworkCore;
 using OrderProcessingSystem.Application.Dtos.Orders;
-using OrderProcessingSystem.Application.Helper.Extentions;
-using OrderProcessingSystem.Data.Contexts;
+using OrderProcessingSystem.Application.Rules.OrderRules.IOrderRules;
+using OrderProcessingSystem.Data.Entities;
 
 namespace OrderProcessingSystem.Application.Handlers.Orders.Queries.GetAllOrders
 {
-    public class GetAllOrdersHandler(OrderProcessingSystemContext context) : IRequestHandler<GetAllOrdersRequest, IAsyncEnumerable<OrderDetailsDto>>
+    public class GetAllOrdersHandler(IGetAllOrdersRule<GetAllOrdersRequest, IQueryable<Order>> getAllOrdersRule) : IRequestHandler<GetAllOrdersRequest, IList<OrderDetailsDto>>
     {
-        public async Task<IAsyncEnumerable<OrderDetailsDto>> Handle(GetAllOrdersRequest request, CancellationToken cancellationToken)
+        public async Task<IList<OrderDetailsDto>> Handle(GetAllOrdersRequest request, CancellationToken cancellationToken)
         {
-            return context.Orders.AsNoTracking()
-                .WhereIf(request.OrderStatus is not null, o => o.OrderStatus == request.OrderStatus)
-                .WhereIf(request.CustomerId is not null, o => o.CustomerId == request.CustomerId)
+            var result = await getAllOrdersRule.Apply(request, cancellationToken);
+            return await result
                 .Select(o => new OrderDetailsDto()
                 {
                     OrderId = o.Id,
@@ -22,7 +21,7 @@ namespace OrderProcessingSystem.Application.Handlers.Orders.Queries.GetAllOrders
                     CustomerId = o.CustomerId,
                     CustomerName = o.Customer.Name,
                     TotalAmount = o.OrderItems.Sum(oi => oi.Quantity * oi.Price)
-                }).AsAsyncEnumerable();
+                }).ToListAsync();
         }
     }
 }

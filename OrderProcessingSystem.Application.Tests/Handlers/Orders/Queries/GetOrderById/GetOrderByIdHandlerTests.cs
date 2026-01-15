@@ -3,13 +3,12 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
-using Microsoft.EntityFrameworkCore;
 using Moq;
 using Xunit;
 using OrderProcessingSystem.Application.Handlers.Orders.Queries.GetOrderById;
 using OrderProcessingSystem.Application.Dtos.Orders;
 using OrderProcessingSystem.Application.Helper.Exceptions;
-using OrderProcessingSystem.Data.Contexts;
+using OrderProcessingSystem.Application.Rules.OrderRules.IOrderRules;
 using OrderProcessingSystem.Data.Entities;
 using OrderProcessingSystem.Data.Helper.Enums;
 
@@ -17,27 +16,15 @@ namespace OrderProcessingSystem.Application.Tests.Handlers.Orders.Queries.GetOrd
 {
     public class GetOrderByIdHandlerTests
     {
-        private static DbContextOptions<OrderProcessingSystemContext> CreateOptions(string dbName) =>
-            new DbContextOptionsBuilder<OrderProcessingSystemContext>()
-                .UseInMemoryDatabase(dbName)
-                .Options;
-
         [Fact]
         public async Task Handle_OrderNotFound_ThrowsNotFoundException()
         {
-            var options = CreateOptions(Guid.NewGuid().ToString());
+            var mockRule = new Mock<IGetOrderByIdRule<GetOrderByIdRequest, Order?>>();
+            mockRule
+                .Setup(r => r.Apply(It.IsAny<GetOrderByIdRequest>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync((Order?)null);
 
-            await using var realContext = new OrderProcessingSystemContext(options);
-
-            var mockContext = new Mock<OrderProcessingSystemContext>(options) { CallBase = true };
-            mockContext.Object.Orders = realContext.Orders;
-            mockContext.Object.Customers = realContext.Customers;
-            mockContext.Object.OrderItems = realContext.OrderItems;
-            mockContext.Object.Products = realContext.Products;
-            mockContext.Setup(m => m.SaveChangesAsync(It.IsAny<CancellationToken>()))
-                       .Returns((CancellationToken ct) => realContext.SaveChangesAsync(ct));
-
-            var handler = new GetOrderByIdHandler(mockContext.Object);
+            var handler = new GetOrderByIdHandler(mockRule.Object);
 
             var unknownId = Guid.NewGuid();
             var request = new GetOrderByIdRequest(unknownId);
@@ -48,10 +35,7 @@ namespace OrderProcessingSystem.Application.Tests.Handlers.Orders.Queries.GetOrd
         [Fact]
         public async Task Handle_OrderExists_ReturnsMappedOrderDetails()
         {
-            var options = CreateOptions(Guid.NewGuid().ToString());
-            await using var realContext = new OrderProcessingSystemContext(options);
-
-            // Seed customer
+            // arrange
             var customerId = Guid.NewGuid();
             var customer = new Customer
             {
@@ -62,9 +46,7 @@ namespace OrderProcessingSystem.Application.Tests.Handlers.Orders.Queries.GetOrd
                 PermanentAddress = "Perm Addr",
                 ShippingAddress = "Ship Addr"
             };
-            realContext.Customers.Add(customer);
 
-            // Seed products
             var prod1Id = Guid.NewGuid();
             var prod1 = new Product
             {
@@ -73,6 +55,7 @@ namespace OrderProcessingSystem.Application.Tests.Handlers.Orders.Queries.GetOrd
                 Description = "Desc 1",
                 Price = 12.5m
             };
+
             var prod2Id = Guid.NewGuid();
             var prod2 = new Product
             {
@@ -81,17 +64,18 @@ namespace OrderProcessingSystem.Application.Tests.Handlers.Orders.Queries.GetOrd
                 Description = "Desc 2",
                 Price = 5m
             };
-            realContext.Products.AddRange(prod1, prod2);
 
-            // Create order and items
             var orderId = Guid.NewGuid();
+            var orderDate = DateTime.UtcNow.AddDays(-2);
+            var lastModified = DateTime.UtcNow.AddDays(-1);
+
             var order = new Order
             {
                 Id = orderId,
                 CustomerId = customerId,
                 Customer = customer,
-                OrderDate = DateTime.UtcNow.AddDays(-2),
-                LastModifiedDate = DateTime.UtcNow.AddDays(-1),
+                OrderDate = orderDate,
+                LastModifiedDate = lastModified,
                 OrderStatus = OrderStatus.SHIPPED,
                 OrderItems = new List<OrderItem>()
             };
@@ -106,6 +90,7 @@ namespace OrderProcessingSystem.Application.Tests.Handlers.Orders.Queries.GetOrd
                 Quantity = 2,
                 Price = prod1.Price
             };
+
             var item2 = new OrderItem
             {
                 Id = Guid.NewGuid(),
@@ -116,33 +101,27 @@ namespace OrderProcessingSystem.Application.Tests.Handlers.Orders.Queries.GetOrd
                 Quantity = 3,
                 Price = prod2.Price
             };
+
             order.OrderItems.Add(item1);
             order.OrderItems.Add(item2);
 
-            realContext.Orders.Add(order);
-            realContext.OrderItems.AddRange(item1, item2);
+            var mockRule = new Mock<IGetOrderByIdRule<GetOrderByIdRequest, Order?>>();
+            mockRule
+                .Setup(r => r.Apply(It.Is<GetOrderByIdRequest>(q => q.OrderId == orderId), It.IsAny<CancellationToken>()))
+                .ReturnsAsync(order);
 
-            await realContext.SaveChangesAsync();
-
-            // create mock context backed by the real in-memory context
-            var mockContext = new Mock<OrderProcessingSystemContext>(options) { CallBase = true };
-            mockContext.Object.Customers = realContext.Customers;
-            mockContext.Object.Products = realContext.Products;
-            mockContext.Object.Orders = realContext.Orders;
-            mockContext.Object.OrderItems = realContext.OrderItems;
-            mockContext.Setup(m => m.SaveChangesAsync(It.IsAny<CancellationToken>()))
-                       .Returns((CancellationToken ct) => realContext.SaveChangesAsync(ct));
-
-            var handler = new GetOrderByIdHandler(mockContext.Object);
+            var handler = new GetOrderByIdHandler(mockRule.Object);
             var request = new GetOrderByIdRequest(orderId);
 
+            // act
             var dto = await handler.Handle(request, CancellationToken.None);
 
+            // assert
             Assert.NotNull(dto);
             Assert.Equal(orderId, dto.OrderId);
             Assert.Equal(order.OrderStatus.ToString(), dto.OrderStatus);
-            Assert.Equal(order.OrderDate, dto.OrderDate);
-            Assert.Equal(order.LastModifiedDate, dto.LastModifiedDate);
+            Assert.Equal(orderDate, dto.OrderDate);
+            Assert.Equal(lastModified, dto.LastModifiedDate);
             Assert.Equal(customerId, dto.CustomerId);
             Assert.Equal(customer.Name, dto.CustomerName);
             Assert.Equal(customer.Email, dto.CustomerEmail);

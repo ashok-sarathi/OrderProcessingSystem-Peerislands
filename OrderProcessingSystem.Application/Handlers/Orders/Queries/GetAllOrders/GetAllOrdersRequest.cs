@@ -9,5 +9,5 @@ namespace OrderProcessingSystem.Application.Handlers.Orders.Queries.GetAllOrders
     public record GetAllOrdersRequest(
             OrderStatus? OrderStatus,
             Guid? CustomerId
-        ) : IRequest<IAsyncEnumerable<OrderDetailsDto>>;
+        ) : IRequest<IList<OrderDetailsDto>>;
 }

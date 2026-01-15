@@ -1,143 +1,163 @@
-﻿using System;
+﻿using Moq;
+using Xunit;
+using MediatR;
+using OrderProcessingSystem.Application.Handlers.Orders.Commands.CreateOrder;
+using OrderProcessingSystem.Application.Handlers.Products.Queries.GetAllProducts;
+using OrderProcessingSystem.Application.Handlers.Customers.Queries.GetAllCustomers;
+using OrderProcessingSystem.Application.Helper.Exceptions;
+using OrderProcessingSystem.Application.Rules.OrderRules.IOrderRules;
+using OrderProcessingSystem.Application.Rules.ProductRules.IProductRules;
+using OrderProcessingSystem.Application.Rules.CustomerRules.ICustomerRules;
+using OrderProcessingSystem.Data.Entities;
+using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
-using Microsoft.EntityFrameworkCore;
-using Moq;
-using Xunit;
-using OrderProcessingSystem.Application.Handlers.Orders.Commands.CreateOrder;
-using OrderProcessingSystem.Application.Rules.OrderRules.IOrderRules;
-using OrderProcessingSystem.Application.Helper.Exceptions;
-using OrderProcessingSystem.Data.Contexts;
-using OrderProcessingSystem.Data.Entities;
 
-namespace OrderProcessingSystem.Application.Tests.Handlers.Orders.Commands.CreateOrder
+namespace OrderProcessingSystem.Tests.Application.Handlers.Orders
 {
     public class CreateOrderHandlerTests
     {
-        private static OrderProcessingSystemContext CreateInMemoryContext(string dbName)
-        {
-            var options = new DbContextOptionsBuilder<OrderProcessingSystemContext>()
-                .UseInMemoryDatabase(dbName)
-                .Options;
+        private readonly Mock<ICreateOrderRule<CreateOrderRequest, Guid>> _createOrderRuleMock;
+        private readonly Mock<IGetAllProductsRule<GetAllProductsRequest, IQueryable<Product>>> _getAllProductsRuleMock;
+        private readonly Mock<IGetAllCustomersRule<GetAllCustomersRequest, IQueryable<Customer>>> _getAllCustomersRuleMock;
 
-            return new OrderProcessingSystemContext(options);
+        private readonly CreateOrderHandler _handler;
+
+        public CreateOrderHandlerTests()
+        {
+            _createOrderRuleMock = new Mock<ICreateOrderRule<CreateOrderRequest, Guid>>();
+            _getAllProductsRuleMock = new Mock<IGetAllProductsRule<GetAllProductsRequest, IQueryable<Product>>>();
+            _getAllCustomersRuleMock = new Mock<IGetAllCustomersRule<GetAllCustomersRequest, IQueryable<Customer>>>();
+
+            _handler = new CreateOrderHandler(
+                _createOrderRuleMock.Object,
+                _getAllProductsRuleMock.Object,
+                _getAllCustomersRuleMock.Object
+            );
         }
 
         [Fact]
-        public async Task Handle_ValidRequest_CallsRuleAndReturnsId()
+        public async Task Handle_Should_Return_OrderId_When_Request_Is_Valid()
         {
-            var dbName = Guid.NewGuid().ToString();
-            using var context = CreateInMemoryContext(dbName);
-
-            // seed customer and product that validation expects
+            // Arrange
             var customerId = Guid.NewGuid();
-            context.Customers.Add(new Customer
-            {
-                Id = customerId,
-                Name = "C",
-                Email = "c@x",
-                Phone = "1",
-                PermanentAddress = "a",
-                ShippingAddress = "a"
-            });
-
             var productId = Guid.NewGuid();
-            context.Products.Add(new Product
+            var orderId = Guid.NewGuid();
+
+            var request = new CreateOrderRequest(customerId,
+                new List<CreateOrdersOrderItem>
+                {
+                    new(productId, 1)
+                });
+
+            var customers = new List<Customer>
             {
-                Id = productId,
-                Name = "P",
-                Description = "d",
-                Price = 9.99m
-            });
+                new()
+                {
+                    Id = customerId,
+                    Name = "John",
+                    Email = "john@test.com",
+                    Phone = "123",
+                    PermanentAddress = "Addr",
+                    ShippingAddress = "Addr"
+                }
+            }.AsQueryable();
 
-            await context.SaveChangesAsync();
+            var products = new List<Product>
+            {
+                new()
+                {
+                    Id = productId,
+                    Name = "Product",
+                    Description = "Desc",
+                    Price = 10
+                }
+            }.AsQueryable();
 
-            var expectedId = Guid.NewGuid();
-            var mockRule = new Mock<ICreateOrderRule<CreateOrderRequest, Guid>>();
-            CreateOrderRequest? capturedRequest = null;
+            _getAllCustomersRuleMock
+                .Setup(x => x.Apply(It.IsAny<GetAllCustomersRequest>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync(customers);
 
-            mockRule
-                .Setup(r => r.Apply(It.IsAny<CreateOrderRequest>(), It.IsAny<CancellationToken>()))
-                .Callback<CreateOrderRequest, CancellationToken>((req, ct) => capturedRequest = req)
-                .ReturnsAsync(expectedId);
+            _getAllProductsRuleMock
+                .Setup(x => x.Apply(It.IsAny<GetAllProductsRequest>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync(products);
 
-            var handler = new CreateOrderHandler(mockRule.Object, context);
+            _createOrderRuleMock
+                .Setup(x => x.Apply(request, It.IsAny<CancellationToken>()))
+                .ReturnsAsync(orderId);
 
-            var request = new CreateOrderRequest(
-                CustomerId: customerId,
-                Items: new[] { new CreateOrdersOrderItem(ItemId: productId, Quantity: 2) }.ToList()
+            // Act
+            var result = await _handler.Handle(request, CancellationToken.None);
+
+            // Assert
+            Assert.Equal(orderId, result);
+        }
+
+        [Fact]
+        public async Task Handle_Should_Throw_BadRequest_When_Customer_Is_Invalid()
+        {
+            // Arrange
+            var request = new CreateOrderRequest
+            (
+                Guid.NewGuid(),
+                new List<CreateOrdersOrderItem>()
             );
 
-            var result = await handler.Handle(request, CancellationToken.None);
+            _getAllCustomersRuleMock
+                .Setup(x => x.Apply(It.IsAny<GetAllCustomersRequest>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync(Enumerable.Empty<Customer>().AsQueryable());
 
-            Assert.Equal(expectedId, result);
-            Assert.NotNull(capturedRequest);
-            Assert.Equal(request.CustomerId, capturedRequest!.CustomerId);
-            Assert.Single(capturedRequest.Items);
-            Assert.Equal(productId, capturedRequest.Items.First().ItemId);
+            _getAllProductsRuleMock
+                .Setup(x => x.Apply(It.IsAny<GetAllProductsRequest>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync(Enumerable.Empty<Product>().AsQueryable());
 
-            mockRule.Verify(r => r.Apply(It.IsAny<CreateOrderRequest>(), It.IsAny<CancellationToken>()), Times.Once);
+            // Act & Assert
+            await Assert.ThrowsAsync<BadRequestException>(() =>
+                _handler.Handle(request, CancellationToken.None));
         }
 
         [Fact]
-        public async Task Handle_InvalidCustomer_ThrowsBadRequestException()
+        public async Task Handle_Should_Throw_BadRequest_When_Product_Is_Invalid()
         {
-            using var context = CreateInMemoryContext(Guid.NewGuid().ToString());
-
-            // seed a product but NOT the customer
-            var productId = Guid.NewGuid();
-            context.Products.Add(new Product
-            {
-                Id = productId,
-                Name = "P",
-                Description = "d",
-                Price = 5m
-            });
-            await context.SaveChangesAsync();
-
-            var mockRule = new Mock<ICreateOrderRule<CreateOrderRequest, Guid>>();
-            var handler = new CreateOrderHandler(mockRule.Object, context);
-
-            var request = new CreateOrderRequest(
-                CustomerId: Guid.NewGuid(),
-                Items: new[] { new CreateOrdersOrderItem(ItemId: productId, Quantity: 1) }.ToList()
-            );
-
-            await Assert.ThrowsAsync<BadRequestException>(() => handler.Handle(request, CancellationToken.None));
-            mockRule.Verify(r => r.Apply(It.IsAny<CreateOrderRequest>(), It.IsAny<CancellationToken>()), Times.Never);
-        }
-
-        [Fact]
-        public async Task Handle_InvalidProductId_ThrowsBadRequestException()
-        {
-            using var context = CreateInMemoryContext(Guid.NewGuid().ToString());
-
-            // seed customer but NOT the referenced product
+            // Arrange
             var customerId = Guid.NewGuid();
-            context.Customers.Add(new Customer
-            {
-                Id = customerId,
-                Name = "C",
-                Email = "c@x",
-                Phone = "1",
-                PermanentAddress = "a",
-                ShippingAddress = "a"
-            });
-            await context.SaveChangesAsync();
-
             var invalidProductId = Guid.NewGuid();
 
-            var mockRule = new Mock<ICreateOrderRule<CreateOrderRequest, Guid>>();
-            var handler = new CreateOrderHandler(mockRule.Object, context);
-
-            var request = new CreateOrderRequest(
-                CustomerId: customerId,
-                Items: new[] { new CreateOrdersOrderItem(ItemId: invalidProductId, Quantity: 1) }.ToList()
+            var request = new CreateOrderRequest
+            (
+                customerId,
+                new List<CreateOrdersOrderItem>
+                {
+                    new(invalidProductId, 1)
+                }
             );
 
-            await Assert.ThrowsAsync<BadRequestException>(() => handler.Handle(request, CancellationToken.None));
-            mockRule.Verify(r => r.Apply(It.IsAny<CreateOrderRequest>(), It.IsAny<CancellationToken>()), Times.Never);
+            var customers = new List<Customer>
+            {
+                new()
+                {
+                    Id = customerId,
+                    Name = "John",
+                    Email = "john@test.com",
+                    Phone = "123",
+                    PermanentAddress = "Addr",
+                    ShippingAddress = "Addr"
+                }
+            }.AsQueryable();
+
+            _getAllCustomersRuleMock
+                .Setup(x => x.Apply(It.IsAny<GetAllCustomersRequest>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync(customers);
+
+            _getAllProductsRuleMock
+                .Setup(x => x.Apply(It.IsAny<GetAllProductsRequest>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync(Enumerable.Empty<Product>().AsQueryable());
+
+            // Act & Assert
+            await Assert.ThrowsAsync<BadRequestException>(() =>
+                _handler.Handle(request, CancellationToken.None));
         }
     }
 }

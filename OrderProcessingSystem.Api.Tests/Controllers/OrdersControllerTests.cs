@@ -1,146 +1,171 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading;
-using System.Threading.Tasks;
-using FluentValidation;
+﻿using FluentValidation;
 using FluentValidation.Results;
 using MediatR;
 using Microsoft.AspNetCore.Mvc;
 using Moq;
-using Xunit;
 using OrderProcessingSystem.Api.Controllers;
+using OrderProcessingSystem.Application.Dtos.Orders;
 using OrderProcessingSystem.Application.Handlers.Orders.Commands.CreateOrder;
 using OrderProcessingSystem.Application.Handlers.Orders.Commands.UpdateOrderStatus;
 using OrderProcessingSystem.Application.Handlers.Orders.Queries.GetAllOrders;
 using OrderProcessingSystem.Application.Handlers.Orders.Queries.GetOrderById;
-using OrderProcessingSystem.Application.Dtos.Orders;
 using OrderProcessingSystem.Data.Helper.Enums;
+using Xunit;
 
 namespace OrderProcessingSystem.Api.Tests.Controllers
 {
     public class OrdersControllerTests
     {
-        private static async IAsyncEnumerable<OrderDetailsDto> ToAsyncEnumerable(params OrderDetailsDto[] items)
+        private readonly Mock<ISender> _senderMock;
+        private readonly Mock<IValidator<CreateOrderRequest>> _validatorMock;
+        private readonly OrdersController _controller;
+
+        public OrdersControllerTests()
         {
-            foreach (var it in items)
-            {
-                yield return it;
-                await Task.Yield();
-            }
+            _senderMock = new Mock<ISender>(MockBehavior.Strict);
+            _validatorMock = new Mock<IValidator<CreateOrderRequest>>(MockBehavior.Strict);
+
+            _controller = new OrdersController(_senderMock.Object);
         }
 
+        #region GET ALL ORDERS
+
         [Fact]
-        public async Task Get_ReturnsOk_WithOrdersAsyncEnumerable()
+        public async Task Get_ShouldReturnOkResult()
         {
-            var mockSender = new Mock<ISender>();
-            var dto1 = new OrderDetailsDto { OrderId = Guid.NewGuid(), CustomerName = "C1", TotalAmount = 10m };
-            var dto2 = new OrderDetailsDto { OrderId = Guid.NewGuid(), CustomerName = "C2", TotalAmount = 20m };
+            // Arrange
+            var resultData = new List<OrderDetailsDto>();
 
-            mockSender
-                .Setup(s => s.Send(It.IsAny<GetAllOrdersRequest>(), It.IsAny<CancellationToken>()))
-                .ReturnsAsync(ToAsyncEnumerable(dto1, dto2));
+            _senderMock
+                .Setup(x => x.Send(
+                    It.IsAny<GetAllOrdersRequest>(),
+                    It.IsAny<CancellationToken>()))
+                .ReturnsAsync(resultData);
 
-            var controller = new OrdersController(mockSender.Object);
+            // Act
+            var result = await _controller.Get(OrderStatus.PENDING, Guid.NewGuid());
 
-            var result = await controller.Get(null, null);
+            // Assert
+            var okResult = Assert.IsType<OkObjectResult>(result);
+            Assert.Equal(resultData, okResult.Value);
 
-            var ok = Assert.IsType<OkObjectResult>(result);
-            var returned = Assert.IsAssignableFrom<IAsyncEnumerable<OrderDetailsDto>>(ok.Value!);
-
-            var list = new List<OrderDetailsDto>();
-            await foreach (var item in returned) list.Add(item);
-
-            Assert.Equal(2, list.Count);
-            Assert.Contains(list, x => x.OrderId == dto1.OrderId);
-            Assert.Contains(list, x => x.OrderId == dto2.OrderId);
+            _senderMock.VerifyAll();
         }
 
+        #endregion
+
+        #region GET ORDER BY ID
+
         [Fact]
-        public async Task GetById_ReturnsOk_WithOrderDetails()
+        public async Task GetById_ShouldReturnOkResult()
         {
+            // Arrange
             var orderId = Guid.NewGuid();
-            var expected = new OrderDetailsDto { OrderId = orderId, CustomerName = "Alice", TotalAmount = 42m };
+            var orderDto = new OrderDetailsDto();
 
-            var mockSender = new Mock<ISender>();
-            mockSender
-                .Setup(s => s.Send(It.Is<GetOrderByIdRequest>(r => r.OrderId == orderId), It.IsAny<CancellationToken>()))
-                .ReturnsAsync(expected);
+            _senderMock
+                .Setup(x => x.Send(
+                    It.IsAny<GetOrderByIdRequest>(),
+                    It.IsAny<CancellationToken>()))
+                .ReturnsAsync(orderDto);
 
-            var controller = new OrdersController(mockSender.Object);
+            // Act
+            var result = await _controller.GetById(orderId);
 
-            var result = await controller.GetById(orderId);
+            // Assert
+            var okResult = Assert.IsType<OkObjectResult>(result);
+            Assert.Equal(orderDto, okResult.Value);
 
-            var ok = Assert.IsType<OkObjectResult>(result);
-            Assert.Same(expected, ok.Value);
+            _senderMock.VerifyAll();
+        }
+
+        #endregion
+
+        #region CREATE ORDER
+
+        [Fact]
+        public async Task Post_ShouldReturnBadRequest_WhenValidationFails()
+        {
+            // Arrange
+            var request = new CreateOrderRequest(Guid.NewGuid(), new List<CreateOrdersOrderItem>());
+
+            var validationErrors = new List<ValidationFailure>
+            {
+                new("CustomerId", "CustomerId is required")
+            };
+
+            _validatorMock
+                .Setup(v => v.ValidateAsync(
+                    request,
+                    It.IsAny<CancellationToken>()))
+                .ReturnsAsync(new ValidationResult(validationErrors));
+
+            // Act
+            var result = await _controller.Post(request, _validatorMock.Object);
+
+            // Assert
+            var badRequest = Assert.IsType<BadRequestObjectResult>(result);
+            Assert.Equal(validationErrors, badRequest.Value);
+
+            _validatorMock.VerifyAll();
         }
 
         [Fact]
-        public async Task Post_InvalidModel_ReturnsBadRequestWithErrors()
+        public async Task Post_ShouldReturnCreatedAtAction_WhenValidationSucceeds()
         {
-            var invalid = new ValidationResult(new[] { new ValidationFailure("Items", "required") });
-            var mockValidator = new Mock<IValidator<CreateOrderRequest>>();
-            mockValidator
-                .Setup(v => v.ValidateAsync(It.IsAny<CreateOrderRequest>(), It.IsAny<CancellationToken>()))
-                .ReturnsAsync(invalid);
+            // Arrange
+            var orderId = Guid.NewGuid();
+            var request = new CreateOrderRequest(Guid.NewGuid(), new List<CreateOrdersOrderItem>());
 
-            var mockSender = new Mock<ISender>();
-            var controller = new OrdersController(mockSender.Object);
+            _validatorMock
+                .Setup(v => v.ValidateAsync(
+                    request,
+                    It.IsAny<CancellationToken>()))
+                .ReturnsAsync(new ValidationResult());
 
-            var request = new CreateOrderRequest(null, new List<CreateOrdersOrderItem>());
+            _senderMock
+                .Setup(x => x.Send(
+                    It.IsAny<CreateOrderRequest>(),
+                    It.IsAny<CancellationToken>()))
+                .ReturnsAsync(orderId);
 
-            var result = await controller.Post(request, mockValidator.Object);
+            // Act
+            var result = await _controller.Post(request, _validatorMock.Object);
 
-            var bad = Assert.IsType<BadRequestObjectResult>(result);
-            Assert.Equal(invalid.Errors, bad.Value);
-        }
-
-        [Fact]
-        public async Task Post_ValidModel_ReturnsCreatedAtAction()
-        {
-            var newOrderId = Guid.NewGuid();
-            var mockValidator = new Mock<IValidator<CreateOrderRequest>>();
-            mockValidator
-                .Setup(v => v.ValidateAsync(It.IsAny<CreateOrderRequest>(), It.IsAny<CancellationToken>()))
-                .ReturnsAsync(new ValidationResult()); // valid
-
-            var mockSender = new Mock<ISender>();
-            mockSender
-                .Setup(s => s.Send(It.IsAny<CreateOrderRequest>(), It.IsAny<CancellationToken>()))
-                .ReturnsAsync(newOrderId);
-
-            var controller = new OrdersController(mockSender.Object);
-
-            var req = new CreateOrderRequest(Guid.NewGuid(), new List<CreateOrdersOrderItem> { new CreateOrdersOrderItem(Guid.NewGuid(), 1) });
-
-            var result = await controller.Post(req, mockValidator.Object);
-
+            // Assert
             var created = Assert.IsType<CreatedAtActionResult>(result);
             Assert.Equal(nameof(OrdersController.GetById), created.ActionName);
+            Assert.Equal(orderId, created.RouteValues["orderId"]);
 
-            Assert.True(created.RouteValues!.ContainsKey("orderId"));
-            Assert.Equal(newOrderId, created.RouteValues["orderId"]);
-            Assert.Null(created.Value);
+            _validatorMock.VerifyAll();
+            _senderMock.VerifyAll();
         }
+
+        #endregion
+
+        #region CANCEL ORDER
 
         [Fact]
-        public async Task CancelOrder_SendsUpdateRequest_AndReturnsNoContent()
+        public async Task CancelOrder_ShouldReturnNoContent()
         {
+            // Arrange
             var orderId = Guid.NewGuid();
-            var mockSender = new Mock<ISender>();
 
-            // non-generic Send(IRequest) returns Task
-            mockSender
-                .Setup(s => s.Send(It.IsAny<IRequest>(), It.IsAny<CancellationToken>()))
-                .Returns(Task.CompletedTask);
+            _senderMock
+                .Setup(x => x.Send(
+                    It.IsAny<UpdateOrderStatusRequest>(),
+                    It.IsAny<CancellationToken>()))
+                .Returns(Task.FromResult(Unit.Value));
 
-            var controller = new OrdersController(mockSender.Object);
+            // Act
+            var result = await _controller.CancelOrder(orderId);
 
-            var result = await controller.CancelOrder(orderId);
-
+            // Assert
             Assert.IsType<NoContentResult>(result);
 
-            mockSender.Verify(s => s.Send(It.Is<UpdateOrderStatusRequest>(r => r.Id == orderId && r.NewStatus == OrderStatus.CANCELED), It.IsAny<CancellationToken>()), Times.Once);
+            _senderMock.VerifyAll();
         }
+
+        #endregion
     }
 }

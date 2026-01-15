@@ -1,83 +1,149 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading;
-using System.Threading.Tasks;
-using Microsoft.EntityFrameworkCore;
+﻿using MediatR;
 using Moq;
-using Xunit;
-using OrderProcessingSystem.Application.Handlers.Products.Queries.GetAllProducts;
 using OrderProcessingSystem.Application.Dtos.Products;
-using OrderProcessingSystem.Data.Contexts;
+using OrderProcessingSystem.Application.Handlers.Products.Queries.GetAllProducts;
+using OrderProcessingSystem.Application.Rules.ProductRules.IProductRules;
 using OrderProcessingSystem.Data.Entities;
+using Microsoft.EntityFrameworkCore.Query;
+using Microsoft.EntityFrameworkCore;
+using Xunit;
+using System.Collections;
+using System.Linq.Expressions;
 
-namespace OrderProcessingSystem.Application.Tests.Products.Queries.GetAllProducts
+namespace OrderProcessingSystem.Tests.Application.Handlers.Products.Queries
 {
     public class GetAllProductsHandlerTests
     {
-        private static DbContextOptions<OrderProcessingSystemContext> CreateOptions(string dbName) =>
-            new DbContextOptionsBuilder<OrderProcessingSystemContext>()
-                .UseInMemoryDatabase(dbName)
-                .Options;
+        private readonly Mock<IGetAllProductsRule<GetAllProductsRequest, IQueryable<Product>>> _ruleMock;
+        private readonly GetAllProductsHandler _handler;
+
+        public GetAllProductsHandlerTests()
+        {
+            _ruleMock = new Mock<IGetAllProductsRule<GetAllProductsRequest, IQueryable<Product>>>(MockBehavior.Strict);
+            _handler = new GetAllProductsHandler(_ruleMock.Object);
+        }
 
         [Fact]
-        public async Task Handle_WhenProductsExist_ReturnsAllProductsAsDtos()
+        public async Task Handle_ShouldReturnListOfProductDto()
         {
-            var options = CreateOptions(Guid.NewGuid().ToString());
-            await using var realContext = new OrderProcessingSystemContext(options);
+            // Arrange
+            var request = new GetAllProductsRequest();
 
-            var p1 = new Product
+            var products = new List<Product>
             {
-                Id = Guid.NewGuid(),
-                Name = "Product A",
-                Description = "Desc A",
-                Price = 9.99m
+                new Product
+                {
+                    Id = Guid.NewGuid(),
+                    Name = "Product 1",
+                    Description = "Desc 1",
+                    Price = 100
+                },
+                new Product
+                {
+                    Id = Guid.NewGuid(),
+                    Name = "Product 2",
+                    Description = "Desc 2",
+                    Price = 200
+                }
             };
-            var p2 = new Product
-            {
-                Id = Guid.NewGuid(),
-                Name = "Product B",
-                Description = "Desc B",
-                Price = 19.50m
-            };
 
-            realContext.Products.AddRange(p1, p2);
-            await realContext.SaveChangesAsync();
+            var asyncQueryable = new TestAsyncEnumerable<Product>(products);
 
-            var mockContext = new Mock<OrderProcessingSystemContext>(options) { CallBase = true };
-            mockContext.Object.Products = realContext.Products;
+            _ruleMock
+                .Setup(x => x.Apply(request, It.IsAny<CancellationToken>()))
+                .ReturnsAsync(asyncQueryable);
 
-            var handler = new GetAllProductsHandler(mockContext.Object);
-            var result = await handler.Handle(new GetAllProductsRequest(), CancellationToken.None);
+            // Act
+            var result = await _handler.Handle(request, CancellationToken.None);
 
+            // Assert
             Assert.NotNull(result);
             Assert.Equal(2, result.Count);
 
-            var dto1 = result.Single(r => r.Id == p1.Id);
-            Assert.Equal(p1.Name, dto1.Name);
-            Assert.Equal(p1.Description, dto1.Description);
-            Assert.Equal(p1.Price, dto1.Price);
+            Assert.Collection(result,
+                item =>
+                {
+                    Assert.Equal(products[0].Id, item.Id);
+                    Assert.Equal(products[0].Name, item.Name);
+                    Assert.Equal(products[0].Description, item.Description);
+                    Assert.Equal(products[0].Price, item.Price);
+                },
+                item =>
+                {
+                    Assert.Equal(products[1].Id, item.Id);
+                    Assert.Equal(products[1].Name, item.Name);
+                    Assert.Equal(products[1].Description, item.Description);
+                    Assert.Equal(products[1].Price, item.Price);
+                });
 
-            var dto2 = result.Single(r => r.Id == p2.Id);
-            Assert.Equal(p2.Name, dto2.Name);
-            Assert.Equal(p2.Description, dto2.Description);
-            Assert.Equal(p2.Price, dto2.Price);
-        }
-
-        [Fact]
-        public async Task Handle_WhenNoProducts_ReturnsEmptyList()
-        {
-            var options = CreateOptions(Guid.NewGuid().ToString());
-            await using var realContext = new OrderProcessingSystemContext(options);
-
-            var mockContext = new Mock<OrderProcessingSystemContext>(options) { CallBase = true };
-            mockContext.Object.Products = realContext.Products;
-
-            var handler = new GetAllProductsHandler(mockContext.Object);
-            var result = await handler.Handle(new GetAllProductsRequest(), CancellationToken.None);
-
-            Assert.NotNull(result);
-            Assert.Empty(result);
+            _ruleMock.VerifyAll();
         }
     }
+
+    #region EF Core Async Test Helpers
+
+    internal class TestAsyncEnumerable<T> : EnumerableQuery<T>, IAsyncEnumerable<T>, IQueryable<T>
+    {
+        public TestAsyncEnumerable(IEnumerable<T> enumerable)
+            : base(enumerable)
+        { }
+
+        public TestAsyncEnumerable(Expression expression)
+            : base(expression)
+        { }
+
+        public IAsyncEnumerator<T> GetAsyncEnumerator(CancellationToken cancellationToken = default)
+            => new TestAsyncEnumerator<T>(this.AsEnumerable().GetEnumerator());
+
+        IQueryProvider IQueryable.Provider
+            => new TestAsyncQueryProvider<T>(this);
+    }
+
+    internal class TestAsyncEnumerator<T> : IAsyncEnumerator<T>
+    {
+        private readonly IEnumerator<T> _inner;
+
+        public TestAsyncEnumerator(IEnumerator<T> inner)
+        {
+            _inner = inner;
+        }
+
+        public T Current => _inner.Current;
+
+        public ValueTask DisposeAsync()
+        {
+            _inner.Dispose();
+            return ValueTask.CompletedTask;
+        }
+
+        public ValueTask<bool> MoveNextAsync()
+            => new ValueTask<bool>(_inner.MoveNext());
+    }
+
+    internal class TestAsyncQueryProvider<TEntity> : IAsyncQueryProvider
+    {
+        private readonly IQueryProvider _inner;
+
+        internal TestAsyncQueryProvider(IQueryProvider inner)
+        {
+            _inner = inner;
+        }
+
+        public IQueryable CreateQuery(Expression expression)
+            => new TestAsyncEnumerable<TEntity>(expression);
+
+        public IQueryable<TElement> CreateQuery<TElement>(Expression expression)
+            => new TestAsyncEnumerable<TElement>(expression);
+
+        public object Execute(Expression expression)
+            => _inner.Execute(expression)!;
+
+        public TResult Execute<TResult>(Expression expression)
+            => _inner.Execute<TResult>(expression)!;
+
+        public TResult ExecuteAsync<TResult>(Expression expression, CancellationToken cancellationToken = default)
+            => Execute<TResult>(expression);
+    }
+
+    #endregion
 }

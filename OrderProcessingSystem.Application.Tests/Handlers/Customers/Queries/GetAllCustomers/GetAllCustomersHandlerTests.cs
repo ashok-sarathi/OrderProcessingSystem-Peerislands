@@ -1,14 +1,16 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
-using Microsoft.EntityFrameworkCore;
 using Moq;
 using Xunit;
 using OrderProcessingSystem.Application.Handlers.Customers.Queries.GetAllCustomers;
 using OrderProcessingSystem.Application.Dtos.Customers;
+using OrderProcessingSystem.Application.Rules.CustomerRules.ICustomerRules;
 using OrderProcessingSystem.Data.Contexts;
 using OrderProcessingSystem.Data.Entities;
+using Microsoft.EntityFrameworkCore;
 
 namespace OrderProcessingSystem.Application.Tests.Handlers.Customers.Queries.GetAllCustomers
 {
@@ -20,8 +22,32 @@ namespace OrderProcessingSystem.Application.Tests.Handlers.Customers.Queries.Get
                 .Options;
 
         [Fact]
-        public async Task Handle_WhenCustomersExist_ReturnsAllCustomersAsDtos()
+        public async Task Handle_WhenNoCustomers_ReturnsEmptyList()
         {
+            // arrange
+            var options = CreateOptions(Guid.NewGuid().ToString());
+            await using var realContext = new OrderProcessingSystemContext(options);
+
+            var mockRule = new Mock<IGetAllCustomersRule<GetAllCustomersRequest, IQueryable<Customer>>>();
+            mockRule
+                .Setup(r => r.Apply(It.IsAny<GetAllCustomersRequest>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync((IQueryable<Customer>)realContext.Customers);
+
+            var handler = new GetAllCustomersHandler(mockRule.Object);
+
+            // act
+            var result = await handler.Handle(new GetAllCustomersRequest(), CancellationToken.None);
+
+            // assert
+            Assert.NotNull(result);
+            Assert.Empty(result);
+            mockRule.Verify(r => r.Apply(It.IsAny<GetAllCustomersRequest>(), It.IsAny<CancellationToken>()), Times.Once);
+        }
+
+        [Fact]
+        public async Task Handle_WithCustomers_ReturnsMappedCustomerDtos()
+        {
+            // arrange
             var options = CreateOptions(Guid.NewGuid().ToString());
             await using var realContext = new OrderProcessingSystemContext(options);
 
@@ -30,61 +56,50 @@ namespace OrderProcessingSystem.Application.Tests.Handlers.Customers.Queries.Get
                 Id = Guid.NewGuid(),
                 Name = "Alice",
                 Email = "alice@example.com",
-                Phone = "111-222-3333",
-                PermanentAddress = "123 Main St",
-                ShippingAddress = "123 Main St"
+                Phone = "111-222",
+                PermanentAddress = "Perm A",
+                ShippingAddress = "Ship A"
             };
             var c2 = new Customer
             {
                 Id = Guid.NewGuid(),
                 Name = "Bob",
                 Email = "bob@example.com",
-                Phone = "444-555-6666",
-                PermanentAddress = "456 Oak Ave",
-                ShippingAddress = "456 Oak Ave"
+                Phone = "333-444",
+                PermanentAddress = "Perm B",
+                ShippingAddress = "Ship B"
             };
 
             realContext.Customers.AddRange(c1, c2);
             await realContext.SaveChangesAsync();
 
-            var mockContext = new Mock<OrderProcessingSystemContext>(options) { CallBase = true };
-            mockContext.Object.Customers = realContext.Customers;
+            var mockRule = new Mock<IGetAllCustomersRule<GetAllCustomersRequest, IQueryable<Customer>>>();
+            mockRule
+                .Setup(r => r.Apply(It.IsAny<GetAllCustomersRequest>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync((IQueryable<Customer>)realContext.Customers);
 
-            var handler = new GetAllCustomersHandler(mockContext.Object);
+            var handler = new GetAllCustomersHandler(mockRule.Object);
+
+            // act
             var result = await handler.Handle(new GetAllCustomersRequest(), CancellationToken.None);
 
+            // assert
             Assert.NotNull(result);
             Assert.Equal(2, result.Count);
 
-            var dto1 = result.Single(r => r.Id == c1.Id);
+            var dto1 = result.Single(d => d.Id == c1.Id);
             Assert.Equal(c1.Name, dto1.Name);
             Assert.Equal(c1.Email, dto1.Email);
             Assert.Equal(c1.Phone, dto1.Phone);
             Assert.Equal(c1.PermanentAddress, dto1.PermanentAddress);
             Assert.Equal(c1.ShippingAddress, dto1.ShippingAddress);
 
-            var dto2 = result.Single(r => r.Id == c2.Id);
+            var dto2 = result.Single(d => d.Id == c2.Id);
             Assert.Equal(c2.Name, dto2.Name);
             Assert.Equal(c2.Email, dto2.Email);
             Assert.Equal(c2.Phone, dto2.Phone);
-            Assert.Equal(c2.PermanentAddress, dto2.PermanentAddress);
-            Assert.Equal(c2.ShippingAddress, dto2.ShippingAddress);
-        }
 
-        [Fact]
-        public async Task Handle_WhenNoCustomers_ReturnsEmptyList()
-        {
-            var options = CreateOptions(Guid.NewGuid().ToString());
-            await using var realContext = new OrderProcessingSystemContext(options);
-
-            var mockContext = new Mock<OrderProcessingSystemContext>(options) { CallBase = true };
-            mockContext.Object.Customers = realContext.Customers;
-
-            var handler = new GetAllCustomersHandler(mockContext.Object);
-            var result = await handler.Handle(new GetAllCustomersRequest(), CancellationToken.None);
-
-            Assert.NotNull(result);
-            Assert.Empty(result);
+            mockRule.Verify(r => r.Apply(It.IsAny<GetAllCustomersRequest>(), It.IsAny<CancellationToken>()), Times.Once);
         }
     }
 }

@@ -1,17 +1,19 @@
 ﻿using MediatR;
 using Microsoft.EntityFrameworkCore;
 using OrderProcessingSystem.Application.Dtos.Customers;
-using OrderProcessingSystem.Data.Contexts;
+using OrderProcessingSystem.Application.Rules.CustomerRules.ICustomerRules;
+using OrderProcessingSystem.Data.Entities;
 
 namespace OrderProcessingSystem.Application.Handlers.Customers.Queries.GetAllCustomers
 {
-    public class GetAllCustomersHandler(OrderProcessingSystemContext context) : IRequestHandler<GetAllCustomersRequest, IList<CustomerDto>>
+    public class GetAllCustomersHandler(IGetAllCustomersRule<GetAllCustomersRequest, IQueryable<Customer>> getAllCustomersRule) : IRequestHandler<GetAllCustomersRequest, IList<CustomerDto>>
     {
         public async Task<IList<CustomerDto>> Handle(GetAllCustomersRequest request, CancellationToken cancellationToken)
         {
             try
             {
-                return await context.Customers.AsNoTracking().Select(x => new CustomerDto(
+                var result = await getAllCustomersRule.Apply(request, cancellationToken);
+                return await result.Select(x => new CustomerDto(
                         x.Id,
                         x.Name,
                         x.Email,

@@ -1,24 +1,25 @@
 ﻿using MediatR;
-using Microsoft.EntityFrameworkCore;
 using OrderProcessingSystem.Application.Dtos.Orders;
 using OrderProcessingSystem.Application.Helper.Exceptions;
-using OrderProcessingSystem.Data.Contexts;
+using OrderProcessingSystem.Application.Rules.OrderRules.IOrderRules;
+using OrderProcessingSystem.Data.Entities;
 
 namespace OrderProcessingSystem.Application.Handlers.Orders.Queries.GetOrderById
 {
-    public class GetOrderByIdHandler(OrderProcessingSystemContext context) : IRequestHandler<GetOrderByIdRequest, OrderDetailsDto>
+    public class GetOrderByIdHandler(IGetOrderByIdRule<GetOrderByIdRequest, Order?> getOrderByIdRule) : IRequestHandler<GetOrderByIdRequest, OrderDetailsDto>
     {
         public async Task<OrderDetailsDto> Handle(GetOrderByIdRequest request, CancellationToken cancellationToken)
         {
-            var orderDetailsDto = new OrderDetailsDto();
-
-            var order = context.Orders.AsNoTracking()
-                .Include(o => o.Customer)
-                .Include(o => o.OrderItems).ThenInclude(oi => oi.Item)
-                .FirstOrDefault(o => o.Id == request.OrderId);
-
+            var order = await getOrderByIdRule.Apply(request, cancellationToken);
             if (order == null)
                 throw new NotFoundException($"Given order id not found : {request.OrderId}");
+
+            return MapOrderDto(order);
+        }
+
+        private OrderDetailsDto MapOrderDto(Order order)
+        {
+            var orderDetailsDto = new OrderDetailsDto();
 
             orderDetailsDto.OrderId = order.Id;
             orderDetailsDto.OrderStatus = order.OrderStatus.ToString();
