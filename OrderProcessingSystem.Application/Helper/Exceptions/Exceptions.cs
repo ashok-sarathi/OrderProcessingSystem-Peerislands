@@ -11,4 +11,9 @@ namespace OrderProcessingSystem.Application.Helper.Exceptions
     public class NotFoundException(string message) : Exception(message)
     {
     }
+
+    [ExcludeFromCodeCoverage]
+    public class UnAuthException(string message) : Exception(message)
+    {
+    }
 }

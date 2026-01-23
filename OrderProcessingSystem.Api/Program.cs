@@ -38,12 +38,14 @@ namespace OrderProcessingSystem.Api
 
             var app = builder.Build();
 
-            app.UseMiddleware<ExceptionHandlerMiddleware>();
-
             app.UseSwagger();
             app.UseSwaggerUI();
 
+            app.UseMiddleware<ExceptionHandlerMiddleware>();
+
             app.UseAuthorization();
+
+            app.UseMiddleware<AuthHandlerMiddleware>();
 
             app.SeedData();
 
