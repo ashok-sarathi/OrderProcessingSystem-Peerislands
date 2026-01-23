@@ -44,18 +44,6 @@ pipeline {
                 sh 'docker build -t $IMAGE_NAME:$IMAGE_TAG .'
             }
         }
-
-        // Optional: Push to Docker Hub
-        //stage('Push Docker Image') {
-        //    when {
-        //        branch 'main'
-        //    }
-        //    steps {
-        //        withDockerRegistry([credentialsId: 'dockerhub-creds', url: '']) {
-        //            sh 'docker push $IMAGE_NAME:$IMAGE_TAG'
-        //        }
-        //    }
-        //}
     }
 
     post {
